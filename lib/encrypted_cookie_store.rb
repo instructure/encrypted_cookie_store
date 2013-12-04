@@ -4,6 +4,8 @@ require 'zlib'
 class EncryptedCookieStore < ActionController::Session::CookieStore
   OpenSSLCipherError = OpenSSL::Cipher.const_defined?(:CipherError) ? OpenSSL::Cipher::CipherError : OpenSSL::CipherError
 
+  EXPIRE_AFTER_KEY = "encrypted_cookie_store.session_expire_after"
+
   class << self
     attr_accessor :data_cipher_type
   end
@@ -23,6 +25,7 @@ class EncryptedCookieStore < ActionController::Session::CookieStore
   end
 
   def call(env)
+    @options[:expire_after] = env[EXPIRE_AFTER_KEY] || @options[:expire_after]
     prepare!(env)
 
     old_session_data, raw_old_session_data, old_timestamp = all_unpacked_cookie_data(env)
@@ -36,7 +39,8 @@ class EncryptedCookieStore < ActionController::Session::CookieStore
     options = env[ENV_SESSION_OPTIONS_KEY]
     request = ActionController::Request.new(env)
 
-    @options[:expire_after] = options[:expire_after] || @options[:expire_after]
+    @options[:expire_after] = env[EXPIRE_AFTER_KEY] || options[:expire_after] || @options[:expire_after]
+    options[:expire_after] = @options[:expire_after]
 
     if !(options[:secure] && !request.ssl?) && (!session_data.is_a?(ActionController::Session::AbstractStore::SessionHash) || session_data.loaded? || options[:expire_after])
       session_data.send(:load!) if session_data.is_a?(ActionController::Session::AbstractStore::SessionHash) && !session_data.loaded?
