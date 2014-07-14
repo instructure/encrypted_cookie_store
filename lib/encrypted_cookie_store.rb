@@ -111,7 +111,7 @@ private
           return [nil, nil, nil] unless timestamp
           return [nil, nil, timestamp] unless Time.now.utc.to_i - timestamp < @options[:expire_after]
         end
-        [Marshal.load(session_data), session_data, timestamp]
+        [(Marshal.load(session_data) rescue nil), session_data, timestamp]
       else
         [nil, nil, nil]
       end
