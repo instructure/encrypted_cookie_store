@@ -14,6 +14,7 @@ class EncryptedCookieStore < ActionController::Session::CookieStore
 
   def initialize(app, options = {})
     options[:secret] = options[:secret].call if options[:secret].respond_to?(:call)
+    @logger = options[:logger]
     ensure_encryption_key_secure(options[:secret])
     @encryption_key = unhex(options[:secret]).freeze
     @compress = options[:compress]
@@ -111,7 +112,13 @@ private
           return [nil, nil, nil] unless timestamp
           return [nil, nil, timestamp] unless Time.now.utc.to_i - timestamp < @options[:expire_after]
         end
-        [(Marshal.load(session_data) rescue nil), session_data, timestamp]
+        loaded_data = nil
+        begin
+          loaded_data = Marshal.load(session_data)
+        rescue
+          @logger.error("Could not unmarshal session_data: #{session_data.inspect}") if @logger
+        end
+        [loaded_data, session_data, timestamp]
       else
         [nil, nil, nil]
       end
